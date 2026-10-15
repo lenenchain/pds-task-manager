@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PDSDataSchemaV2",
+  "type": "object",
+  "properties": {
+    "plan": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "period": { "type": "string" },
+        "priority": { "type": "string" },
+        "successCriteria": { "type": "string" },
+        "estimatedHours": { "type": "number" }
+      },
+      "required": ["id", "period", "priority", "successCriteria", "estimatedHours"]
+    },
+    "todos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "dueDate": { "type": "string", "format": "date" },
+          "priority": { "type": "string" },
+          "tag": { "type": "string" },
+          "est": { "type": "integer" },
+          "status": { "type": "string", "enum": ["pending", "in-progress", "completed"] },
+          "startTime": { "type": "string" },
+          "endTime": { "type": "string" },
+          "actualTime": { "type": "integer" },
+          "blockedReason": { "type": "string" }
+        },
+        "required": ["id", "title", "dueDate", "priority", "tag", "est", "status"]
+      }
+    },
+    "retroNote": { "type": "string" }
+  },
+  "required": ["plan", "todos", "retroNote"]
+}
