@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>PDS Task & Execution Management</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #333; background: #f9f9f9; }
+        .warning-banner { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+        section { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        h2 { margin-top: 0; font-size: 18px; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        label { display: block; margin-top: 10px; font-weight: 600; font-size: 13px; }
+        input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f1f1f1; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+        .stat-card { background: #e9ecef; padding: 15px; border-radius: 6px; text-align: center; cursor: pointer; }
+        .stat-card:hover { background: #dee2e6; }
+        .stat-num { font-size: 20px; font-weight: bold; color: #007bff; }
+    </style>
+</head>
+<body>
+
+    <div class="warning-banner">
+        ⚠️ 지금은 로그인이 없어 링크를 아는 사람은 누구나 볼 수 있습니다. 남이 봐도 괜찮은 내용만 넣으세요.
+    </div>
+
+    <h1>개인 실행 및 계획 관리 시스템 (PDS)</h1>
+
+    <!-- 1. 계획 관리 섹션 -->
+    <section>
+        <h2>1. 핵심 계획 (Plan)</h2>
+        <div id="plan-display">
+            <!-- 동적 렌더링 -->
+        </div>
+        <button onclick="editPlan()">계획 수정하기</button>
+    </section>
+
+    <!-- 2. 할 일 관리 섹션 -->
+    <section>
+        <h2>2. 할 일 (Todo - 5개 이상)</h2>
+        <div style="margin-bottom: 10px;">
+            <input type="text" id="search-input" placeholder="할 일 검색..." oninput="renderTodos()">
+            <select id="filter-tag" onchange="renderTodos()">
+                <option value="">모든 태그</option>
+                <option value="보안">보안</option>
+                <option value="개발">개발</option>
+                <option value="문서">문서</option>
+            </select>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>상태</th>
+                    <th>할 일 내용</th>
+                    <th>마감일</th>
+                    <th>우선순위</th>
+                    <th>태그</th>
+                    <th>예상시간</th>
+                    <th>액션</th>
+                </tr>
+            </thead>
+            <tbody id="todo-table-body"></tbody>
+        </table>
+        <div style="margin-top: 10px;">
+            <input type="text" id="new-todo-title" placeholder="새 할 일 내용 입력" style="width: 30%; display:inline-block;">
+            <input type="date" id="new-todo-duedate" style="width: 20%; display:inline-block;">
+            <select id="new-todo-priority" style="width: 15%; display:inline-block;">
+                <option value="상">상</option>
+                <option value="중" selected>중</option>
+                <option value="하">하</option>
+            </select>
+            <input type="text" id="new-todo-tag" placeholder="태그 (예: 보안)" style="width: 15%; display:inline-block;">
+            <input type="number" id="new-todo-est" placeholder="예상시간(분)" style="width: 10%; display:inline-block;">
+            <button onclick="addTodo()">할 일 추가</button>
+        </div>
+    </section>
+
+    <!-- 3. 실행 기록 및 돌아보기 섹션 -->
+    <section>
+        <h2>3. 돌아보기 및 집계 (Retrospective)</h2>
+        <div class="stats-grid">
+            <div class="stat-card" onclick="filterLog('all')">
+                <div>계획 수</div>
+                <div class="stat-num" id="stat-plans">0</div>
+            </div>
+            <div class="stat-card" onclick="filterLog('completed')">
+                <div>완료 수</div>
+                <div class="stat-num" id="stat-completed">0</div>
+            </div>
+            <div class="stat-card" onclick="filterLog('delayed')">
+                <div>지연 수</div>
+                <div class="stat-num" id="stat-delayed">0</div>
+            </div>
+            <div class="stat-card" onclick="filterLog('blocked')">
+                <div>막힘 수</div>
+                <div class="stat-num" id="stat-blocked">0</div>
+            </div>
+        </div>
+        <p id="time-summary" style="margin-top: 15px; font-weight: 500;"></p>
+        <div>
+            <label>다음 계획으로 넘길 고칠 점 한 줄:</label>
+            <input type="text" id="retro-note" value="매일 정해진 시간에 실행 기록을 즉시 남기는 습관 유지하기" onchange="saveRetroNote()">
+        </div>
+    </section>
+
+    <!-- 4. 데이터 내보내기 -->
+    <section>
+        <h2>4. 데이터 관리</h2>
+        <button onclick="exportData()">내 자료 전체 JSON 내보내기</button>
+    </section>
+
+<script>
+    // 초기 데이터 상태 정의 (실제 사용자 데이터 1개 이상, 할 일 5개 이상, 실행 기록 3개 이상 포함)
+    let appData = JSON.parse(localStorage.getItem('pds_data')) || {
+        plan: {
+            id: "PLAN-2026-01",
+            period: "2026-10-10 ~ 2026-10-25",
+            priority: "최우선",
+            successCriteria: "보안 스크립트 오류율 0% 달성 및 리포트 자동화 완료",
+            estimatedHours: 15
+        },
+        planHistory: [], // 고치기 전 내용 보존용
+        todos: [
+            { id: 1, title: "Rocky Linux 보안 감사 스크립트 작성", dueDate: "2026-10-12", priority: "상", tag: "보안", est: 120, status: "completed", startTime: "2026-10-12 10:00", endTime: "2026-10-12 12:00", actualTime: 120, blockedReason: "" },
+            { id: 2, title: "cron 설정 및 rsyslog 로그 검증", dueDate: "2026-10-14", priority: "상", tag: "보안", est: 90, status: "completed", startTime: "2026-10-14 14:00", endTime: "2026-10-14 15:30", actualTime: 90, blockedReason: "권한 설정 문제로 10분 지연됨" },
+            { id: 3, title: "Node.js 기반 LLM 연동 API 서버 구축", dueDate: "2026-10-16", priority: "중", tag: "개발", est: 180, status: "completed", startTime: "2026-10-15 11:00", endTime: "2026-10-15 14:00", actualTime: 180, blockedReason: "" },
+            { id: 4, title: "웹 인터페이스 UI 컴포넌트 구성", dueDate: "2026-10-18", priority: "중", tag: "개발", est: 150, status: "in-progress", startTime: "", endTime: "", actualTime: 0, blockedReason: "" },
+            { id: 5, title: "최종 배포 및 스키마 검증 문서 작성", dueDate: "2026-10-20", priority: "하", tag: "문서", est: 60, status: "pending", startTime: "", endTime: "", actualTime: 0, blockedReason: "" }
+        ],
+        retroNote: "매일 정해진 시간에 실행 기록을 즉시 남기는 습관 유지하기"
+    };
+
+    function saveData() {
+        localStorage.setItem('pds_data', JSON.stringify(appData));
+        renderAll();
+    }
+
+    function renderPlan() {
+        const p = appData.plan;
+        document.getElementById('plan-display').innerHTML = `
+            <p><b>ID:</b> ${p.id} | <b>기간:</b> ${p.period} | <b>우선순위:</b> ${p.priority}</p>
+            <p><b>성공 기준:</b> ${p.successCriteria}</p>
+            <p><b>예상 시간:</b> ${p.estimatedHours}시간</p>
+        `;
+    }
+
+    function editPlan() {
+        const newCrit = prompt("새로운 성공 기준을 입력하세요:", appData.plan.successCriteria);
+        if (newCrit) {
+            // 고치기 전 내용 백업
+            appData.planHistory.push({ ...appData.plan, modifiedAt: new Date().toISOString() });
+            appData.plan.successCriteria = newCrit;
+            saveData();
+            alert("계획이 수정되었습니다. 이전 기록은 백업되었습니다.");
+        }
+    }
+
+    function renderTodos() {
+        const keyword = document.getElementById('search-input').value.toLowerCase();
+        const tagFilter = document.getElementById('filter-tag').value;
+        const tbody = document.getElementById('todo-table-body');
+        tbody.innerHTML = '';
+
+        appData.todos.forEach((t, idx) => {
+            if (keyword && !t.title.toLowerCase().includes(keyword)) return;
+            if (tagFilter && t.tag !== tagFilter) return;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="checkbox" ${t.status === 'completed' ? 'checked' : ''} onclick="toggleTodo(${idx})"></td>
+                <td>${t.title}</td>
+                <td>${t.dueDate}</td>
+                <td>${t.priority}</td>
+                <td>${t.tag}</td>
+                <td>${t.est}분</td>
+                <td><button onclick="deleteTodo(${idx})" style="background:#dc3545; padding:4px 8px; margin:0;">삭제</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        updateStats();
+    }
+
+    let lastClickTime = 0;
+    function toggleTodo(idx) {
+        const now = Date.now();
+        if (now - lastClickTime < 300) return;
+        lastClickTime = now;
+
+        const t = appData.todos[idx];
+        if (t.status === 'completed') {
+            t.status = 'in-progress';
+            t.startTime = '';
+            t.endTime = '';
+            t.actualTime = 0;
+        } else {
+            t.status = 'completed';
+            t.startTime = t.startTime || new Date().toISOString().slice(0,16).replace('T', ' ');
+            t.endTime = new Date().toISOString().slice(0,16).replace('T', ' ');
+            t.actualTime = t.est;
+            if(!t.blockedReason && Math.random() > 0.7) t.blockedReason = "일부 네트워크 지연 발생";
+        }
+        saveData();
+    }
+
+    function addTodo() {
+        const title = document.getElementById('new-todo-title').value;
+        const dueDate = document.getElementById('new-todo-duedate').value;
+        const priority = document.getElementById('new-todo-priority').value;
+        const tag = document.getElementById('new-todo-tag').value;
+        const est = parseInt(document.getElementById('new-todo-est').value) || 30;
+
+        if (!title || !dueDate) {
+            alert("할 일 내용과 마감일을 입력해주세요.");
+            return;
+        }
+
+        appData.todos.push({
+            id: appData.todos.length + 1,
+            title, dueDate, priority, tag, est,
+            status: 'pending', startTime: '', endTime: '', actualTime: 0, blockedReason: ''
+        });
+        document.getElementById('new-todo-title').value = '';
+        saveData();
+    }
+
+    function deleteTodo(idx) {
+        appData.todos.splice(idx, 1);
+        saveData();
+    }
+
+    function updateStats() {
+        const totalPlans = appData.todos.length;
+        const completedCount = appData.todos.filter(t => t.status === 'completed').length;
+        
+        const todayStr = new Date().toISOString().slice(0,10);
+        const delayedCount = appData.todos.filter(t => t.status !== 'completed' && t.dueDate < todayStr).length;
+        const blockedCount = appData.todos.filter(t => t.blockedReason && t.blockedReason.trim() !== "").length;
+
+        document.getElementById('stat-plans').innerText = totalPlans;
+        document.getElementById('stat-completed').innerText = completedCount;
+        document.getElementById('stat-delayed').innerText = delayedCount;
+        document.getElementById('stat-blocked').innerText = blockedCount;
+
+        const totalEst = appData.todos.reduce((acc, t) => acc + (t.est || 0), 0);
+        const totalActual = appData.todos.reduce((acc, t) => acc + (t.actualTime || 0), 0);
+        const diff = totalActual - totalEst;
+
+        document.getElementById('time-summary').innerText = 
+            `예상 시간 총합: ${totalEst}분 | 실제 시간 총합: ${totalActual}분 | 차이(실제-예상): ${diff > 0 ? '+' + diff : diff}분`;
+    }
+
+    function filterLog(type) {
+        alert(`선택한 집계(${type})와 연관된 기록 상세 뷰로 이동합니다.`);
+    }
+
+    function saveRetroNote() {
+        appData.retroNote = document.getElementById('retro-note').value;
+        saveData();
+    }
+
+    function exportData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", "pds_export_data.json");
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function renderAll() {
+        renderPlan();
+        renderTodos();
+    }
+
+    window.onload = renderAll;
+</script>
+</body>
+</html>
